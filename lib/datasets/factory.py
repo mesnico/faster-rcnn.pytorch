@@ -11,10 +11,11 @@ from __future__ import division
 from __future__ import print_function
 
 __sets = {}
-from datasets.pascal_voc import pascal_voc
-from datasets.coco import coco
-from datasets.imagenet import imagenet
-from datasets.vg import vg
+from lib.datasets.pascal_voc import pascal_voc
+from lib.datasets.coco import coco
+from lib.datasets.imagenet import imagenet
+from lib.datasets.vg import vg
+from lib.datasets.openimages import openimages
 
 import numpy as np
 
@@ -58,6 +59,11 @@ for split in ['train', 'val', 'val1', 'val2', 'test']:
     devkit_path = 'data/imagenet/ILSVRC/devkit'
     data_path = 'data/imagenet/ILSVRC'
     __sets[name] = (lambda split=split, devkit_path=devkit_path, data_path=data_path: imagenet(split,devkit_path,data_path))
+
+# set up openimages
+for split in ['train', 'validation', 'test']:
+    name = 'openimages_v5_{}'.format(split)
+    __sets[name] = (lambda split=split, name=name: openimages(name, split))
 
 def get_imdb(name):
   """Get an imdb (image database) by name."""

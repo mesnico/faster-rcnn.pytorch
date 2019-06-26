@@ -23,7 +23,7 @@ import torch.optim as optim
 
 import torchvision.transforms as transforms
 import torchvision.datasets as dset
-from scipy.misc import imread
+from imageio import imread
 from roi_data_layer.roidb import combined_roidb
 from roi_data_layer.roibatchLoader import roibatchLoader
 from model.utils.config import cfg, cfg_from_file, cfg_from_list, get_output_dir
@@ -36,6 +36,9 @@ from model.utils.blob import im_list_to_blob
 from model.faster_rcnn.vgg16 import vgg16
 from model.faster_rcnn.resnet import resnet
 import pdb
+
+import faulthandler
+faulthandler.enable()
 
 try:
     xrange          # Python 2
@@ -145,6 +148,29 @@ if __name__ == '__main__':
   print('Called with args:')
   print(args)
 
+  if args.dataset == "pascal_voc":
+      args.imdb_name = "voc_2007_trainval"
+      args.imdbval_name = "voc_2007_test"
+      args.set_cfgs = ['ANCHOR_SCALES', '[8, 16, 32]', 'ANCHOR_RATIOS', '[0.5,1,2]']
+  elif args.dataset == "pascal_voc_0712":
+      args.imdb_name = "voc_2007_trainval+voc_2012_trainval"
+      args.imdbval_name = "voc_2007_test"
+      args.set_cfgs = ['ANCHOR_SCALES', '[8, 16, 32]', 'ANCHOR_RATIOS', '[0.5,1,2]']
+  elif args.dataset == "coco":
+      args.imdb_name = "coco_2014_train+coco_2014_valminusminival"
+      args.imdbval_name = "coco_2014_minival"
+      args.set_cfgs = ['ANCHOR_SCALES', '[4, 8, 16, 32]', 'ANCHOR_RATIOS', '[0.5,1,2]']
+  elif args.dataset == "imagenet":
+      args.imdb_name = "imagenet_train"
+      args.imdbval_name = "imagenet_val"
+      args.set_cfgs = ['ANCHOR_SCALES', '[8, 16, 32]', 'ANCHOR_RATIOS', '[0.5,1,2]']
+  elif args.dataset == "vg":
+      args.imdb_name = "vg_150-50-50_minitrain"
+      args.imdbval_name = "vg_150-50-50_minival"
+      args.set_cfgs = ['ANCHOR_SCALES', '[4, 8, 16, 32]', 'ANCHOR_RATIOS', '[0.5,1,2]']
+
+  args.cfg_file = "cfgs/{}_ls.yml".format(args.net)
+
   if args.cfg_file is not None:
     cfg_from_file(args.cfg_file)
   if args.set_cfgs is not None:
@@ -165,22 +191,109 @@ if __name__ == '__main__':
   load_name = os.path.join(input_dir,
     'faster_rcnn_{}_{}_{}.pth'.format(args.checksession, args.checkepoch, args.checkpoint))
 
-  pascal_classes = np.asarray(['__background__',
-                       'aeroplane', 'bicycle', 'bird', 'boat',
-                       'bottle', 'bus', 'car', 'cat', 'chair',
-                       'cow', 'diningtable', 'dog', 'horse',
-                       'motorbike', 'person', 'pottedplant',
-                       'sheep', 'sofa', 'train', 'tvmonitor'])
+  if args.dataset == 'pascal_voc':
+      classes = np.asarray(['__background__',
+                           'aeroplane', 'bicycle', 'bird', 'boat',
+                           'bottle', 'bus', 'car', 'cat', 'chair',
+                           'cow', 'diningtable', 'dog', 'horse',
+                           'motorbike', 'person', 'pottedplant',
+                           'sheep', 'sofa', 'train', 'tvmonitor'])
+  elif args.dataset == 'coco':
+      classes = list({0: u'__background__',
+       1: u'person',
+       2: u'bicycle',
+       3: u'car',
+       4: u'motorcycle',
+       5: u'airplane',
+       6: u'bus',
+       7: u'train',
+       8: u'truck',
+       9: u'boat',
+       10: u'traffic light',
+       11: u'fire hydrant',
+       12: u'stop sign',
+       13: u'parking meter',
+       14: u'bench',
+       15: u'bird',
+       16: u'cat',
+       17: u'dog',
+       18: u'horse',
+       19: u'sheep',
+       20: u'cow',
+       21: u'elephant',
+       22: u'bear',
+       23: u'zebra',
+       24: u'giraffe',
+       25: u'backpack',
+       26: u'umbrella',
+       27: u'handbag',
+       28: u'tie',
+       29: u'suitcase',
+       30: u'frisbee',
+       31: u'skis',
+       32: u'snowboard',
+       33: u'sports ball',
+       34: u'kite',
+       35: u'baseball bat',
+       36: u'baseball glove',
+       37: u'skateboard',
+       38: u'surfboard',
+       39: u'tennis racket',
+       40: u'bottle',
+       41: u'wine glass',
+       42: u'cup',
+       43: u'fork',
+       44: u'knife',
+       45: u'spoon',
+       46: u'bowl',
+       47: u'banana',
+       48: u'apple',
+       49: u'sandwich',
+       50: u'orange',
+       51: u'broccoli',
+       52: u'carrot',
+       53: u'hot dog',
+       54: u'pizza',
+       55: u'donut',
+       56: u'cake',
+       57: u'chair',
+       58: u'couch',
+       59: u'potted plant',
+       60: u'bed',
+       61: u'dining table',
+       62: u'toilet',
+       63: u'tv',
+       64: u'laptop',
+       65: u'mouse',
+       66: u'remote',
+       67: u'keyboard',
+       68: u'cell phone',
+       69: u'microwave',
+       70: u'oven',
+       71: u'toaster',
+       72: u'sink',
+       73: u'refrigerator',
+       74: u'book',
+       75: u'clock',
+       76: u'vase',
+       77: u'scissors',
+       78: u'teddy bear',
+       79: u'hair drier',
+       80: u'toothbrush'}.values())
+
+  print('Using config:')
+  pprint.pprint(cfg)
+
 
   # initilize the network here.
   if args.net == 'vgg16':
-    fasterRCNN = vgg16(pascal_classes, pretrained=False, class_agnostic=args.class_agnostic)
+    fasterRCNN = vgg16(classes, pretrained=False, class_agnostic=args.class_agnostic)
   elif args.net == 'res101':
-    fasterRCNN = resnet(pascal_classes, 101, pretrained=False, class_agnostic=args.class_agnostic)
+    fasterRCNN = resnet(classes, 101, pretrained=False, class_agnostic=args.class_agnostic)
   elif args.net == 'res50':
-    fasterRCNN = resnet(pascal_classes, 50, pretrained=False, class_agnostic=args.class_agnostic)
+    fasterRCNN = resnet(classes, 50, pretrained=False, class_agnostic=args.class_agnostic)
   elif args.net == 'res152':
-    fasterRCNN = resnet(pascal_classes, 152, pretrained=False, class_agnostic=args.class_agnostic)
+    fasterRCNN = resnet(classes, 152, pretrained=False, class_agnostic=args.class_agnostic)
   else:
     print("network is not defined")
     pdb.set_trace()
@@ -278,10 +391,11 @@ if __name__ == '__main__':
       im_data_pt = im_data_pt.permute(0, 3, 1, 2)
       im_info_pt = torch.from_numpy(im_info_np)
 
-      im_data.data.resize_(im_data_pt.size()).copy_(im_data_pt)
-      im_info.data.resize_(im_info_pt.size()).copy_(im_info_pt)
-      gt_boxes.data.resize_(1, 1, 5).zero_()
-      num_boxes.data.resize_(1).zero_()
+      with torch.no_grad():
+              im_data.resize_(im_data_pt.size()).copy_(im_data_pt)
+              im_info.resize_(im_info_pt.size()).copy_(im_info_pt)
+              gt_boxes.resize_(1, 1, 5).zero_()
+              num_boxes.resize_(1).zero_()
 
       # pdb.set_trace()
       det_tic = time.time()
@@ -315,7 +429,7 @@ if __name__ == '__main__':
                 else:
                     box_deltas = box_deltas.view(-1, 4) * torch.FloatTensor(cfg.TRAIN.BBOX_NORMALIZE_STDS) \
                                + torch.FloatTensor(cfg.TRAIN.BBOX_NORMALIZE_MEANS)
-                box_deltas = box_deltas.view(1, -1, 4 * len(pascal_classes))
+                box_deltas = box_deltas.view(1, -1, 4 * len(classes))
 
           pred_boxes = bbox_transform_inv(boxes, box_deltas, 1)
           pred_boxes = clip_boxes(pred_boxes, im_info.data, 1)
@@ -332,7 +446,7 @@ if __name__ == '__main__':
       misc_tic = time.time()
       if vis:
           im2show = np.copy(im)
-      for j in xrange(1, len(pascal_classes)):
+      for j in xrange(1, len(classes)):
           inds = torch.nonzero(scores[:,j]>thresh).view(-1)
           # if there is det
           if inds.numel() > 0:
@@ -350,7 +464,7 @@ if __name__ == '__main__':
             keep = nms(cls_boxes[order, :], cls_scores[order], cfg.TEST.NMS)
             cls_dets = cls_dets[keep.view(-1).long()]
             if vis:
-              im2show = vis_detections(im2show, pascal_classes[j], cls_dets.cpu().numpy(), 0.5)
+              im2show = vis_detections(im2show, classes[j], cls_dets.cpu().numpy(), 0.5)
 
       misc_toc = time.time()
       nms_time = misc_toc - misc_tic
@@ -377,3 +491,4 @@ if __name__ == '__main__':
   if webcam_num >= 0:
       cap.release()
       cv2.destroyAllWindows()
+
