@@ -46,6 +46,14 @@ class openimages(imdb):
                 pickle.dump(loaded_data, f)
 
         self.data, self.class_names, self.class_dict = loaded_data
+
+        # Outputs classes filenames on file for later use
+        class_names_filename = os.path.join(self.root, 'cache', 'class_names.pkl')
+        if not os.path.exists(class_names_filename):
+            print('Writing classes on file {}'.format(class_names_filename))
+            with open(class_names_filename, 'wb') as f:
+                pickle.dump(self.class_names, f)
+
         self._image_index = sorted(list(self.data.keys()))
         self._classes = self.class_names
 
@@ -164,33 +172,10 @@ class openimages(imdb):
         """
         Return the database of ground-truth regions of interest.
 
-        This function loads/saves from/to a cache file to speed up future calls.
         """
-        cached_data_path = os.path.join(self.root, 'cache', '{}_roidb_cache.pkl'.format(self.image_set))
 
-        def do_cache():
-            with open(cached_data_path, 'wb') as f:
-                print('Caching OpenImages roidb data on file: {}'.format(cached_data_path))
-                gt_roidb = {index: self._load_openimages_annotation(index)
-                            for index in tqdm.tqdm(self._image_index)}
-                pickle.dump(gt_roidb, f)
-                return gt_roidb
-
-        if os.path.exists(cached_data_path):
-            with open(cached_data_path, 'rb') as f:
-                print('Loading OpenImages roidb data cache from file: {}'.format(cached_data_path))
-                gt_roidb = pickle.load(f)
-                if len(gt_roidb) < len(self._image_index):
-                    raise ValueError('Flipped images not yet supported!')
-                    # the loaded db is smaller than the current one, overwrite!
-                    print('Upgrading roidb (loaded len: {}; current len: {})'.format(len(gt_roidb), len(self._image_index)))
-                    gt_roidb = do_cache()
-                elif len(gt_roidb) > len(self._image_index):
-                    # the loaded db is bigger than the current one... the loaded db already contains flipped images
-                    print('Loading also flipped images')
-                    raise ValueError('Flipped images not yet supported!')
-        else:
-            gt_roidb = do_cache()
+        gt_roidb = [self._load_openimages_annotation(index)
+                    for index in tqdm.tqdm(self._image_index)]
 
         return gt_roidb
 
@@ -220,8 +205,6 @@ class openimages(imdb):
                 'flipped': False}
 
     def append_flipped_images(self):
-        # TODO: as of now, not working
-
         num_images = self.num_images
         for i in tqdm.tqdm(self._image_index):
             annotation = self._load_openimages_annotation(i)

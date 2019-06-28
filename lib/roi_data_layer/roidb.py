@@ -9,6 +9,8 @@ from model.utils.config import cfg
 from datasets.factory import get_imdb
 import PIL
 import tqdm
+import pickle
+import os
 import pdb
 
 def prepare_roidb(imdb):
@@ -111,7 +113,19 @@ def combined_roidb(imdb_names, training=True):
     print('Loaded dataset `{:s}` for training'.format(imdb.name))
     imdb.set_proposal_method(cfg.TRAIN.PROPOSAL_METHOD)
     print('Set proposal method: {:s}'.format(cfg.TRAIN.PROPOSAL_METHOD))
-    roidb = get_training_roidb(imdb)
+
+    # caching
+    cached_data_path = os.path.join(cfg.ROOT_DIR, 'roidb_cache', '{}_roidb.pkl'.format(imdb_name))
+    if os.path.exists(cached_data_path):
+      with open(cached_data_path, 'rb') as f:
+        print('Loading {} roidb data cache from file: {}'.format(imdb_name, cached_data_path))
+        roidb = pickle.load(f)
+    else:
+      with open(cached_data_path, 'wb') as f:
+        print('Caching {} roidb data cache into file: {}'.format(imdb_name, cached_data_path))
+        roidb = get_training_roidb(imdb)
+        pickle.dump(roidb, f)
+    # roidb = get_training_roidb(imdb)
     return roidb
 
   roidbs = [get_roidb(s) for s in imdb_names.split('+')]
