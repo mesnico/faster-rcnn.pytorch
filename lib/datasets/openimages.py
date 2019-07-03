@@ -16,7 +16,9 @@ import pathlib
 import pandas as pd
 import scipy
 import PIL
+import piexif
 import tqdm
+import imdirect
 from progressbar import *
 
 import pdb
@@ -53,6 +55,20 @@ class openimages(imdb):
             print('Writing classes on file {}'.format(class_names_filename))
             with open(class_names_filename, 'wb') as f:
                 pickle.dump(self.class_names, f)
+
+        # Cache class probability distribution for later use
+        class_frequencies_filename = os.path.join(self.root, 'cache', 'class_frequencies.pkl')
+        if not os.path.exists(class_frequencies_filename):
+            print('Calculating classes distribution')
+            frequencies = {}
+            for d in tqdm.tqdm(self.data.values()):
+                for label in d['labels']:
+                    if label not in frequencies:
+                        frequencies[label] = 1
+                    else:
+                        frequencies[label] += 1
+            with open(class_frequencies_filename, 'wb') as f:
+                pickle.dump(frequencies, f)
 
         self._image_index = sorted(list(self.data.keys()))
         self._classes = self.class_names
@@ -180,7 +196,18 @@ class openimages(imdb):
         return gt_roidb
 
     def _get_size(self, index):
-        return PIL.Image.open(self.image_path_from_index(index)).size
+        img = PIL.Image.open(self.image_path_from_index(index))
+        try:
+            exif = piexif.load(self.image_path_from_index(index))
+        except:
+            # EXIF data is probably corrupt, ignore orientation
+            return img.size
+        # handle orientation if picture was taken with a phone
+        orientation_value = exif.get('0th', {}).get(piexif.ImageIFD.Orientation)
+        if orientation_value is None:
+            return img.size
+        else:
+            return imdirect.autorotate(img).size
 
     def _load_openimages_annotation(self, index):
         boxes = self.data[index]['boxes']

@@ -365,7 +365,7 @@ if __name__ == '__main__':
                     fg_cnt = torch.sum(rois_label.data.ne(0))
                     bg_cnt = rois_label.data.numel() - fg_cnt
 
-                step_pbar.set_postfix(dict(loss=loss_temp))
+                step_pbar.set_postfix(dict(loss=loss_temp, fg=int(fg_cnt), bg=int(bg_cnt)))
                 #print("[session %d][epoch %2d][iter %4d/%4d] loss: %.4f, lr: %.2e" \
                 #      % (args.session, epoch, step, iters_per_epoch, loss_temp, lr))
                 #print("\t\t\tfg/bg=(%d/%d), time cost: %f" % (fg_cnt, bg_cnt, end - start))

@@ -8,6 +8,7 @@ from model.utils.config import cfg
 from .proposal_layer import _ProposalLayer
 from .anchor_target_layer import _AnchorTargetLayer
 from model.utils.net_utils import _smooth_l1_loss
+from model.utils.focal_loss import FocalLoss
 
 import numpy as np
 import math
@@ -43,6 +44,8 @@ class _RPN(nn.Module):
 
         self.rpn_loss_cls = 0
         self.rpn_loss_box = 0
+
+        # self.focal_loss = FocalLoss(num_classes=2)
 
     @staticmethod
     def reshape(x, d):
@@ -95,6 +98,7 @@ class _RPN(nn.Module):
             rpn_label = torch.index_select(rpn_label.view(-1), 0, rpn_keep.data)
             rpn_label = Variable(rpn_label.long())
             self.rpn_loss_cls = F.cross_entropy(rpn_cls_score, rpn_label)
+            # self.rpn_loss_cls = self.focal_loss(rpn_cls_score, rpn_label)
             fg_cnt = torch.sum(rpn_label.data.ne(0))
 
             rpn_bbox_targets, rpn_bbox_inside_weights, rpn_bbox_outside_weights = rpn_data[1:]

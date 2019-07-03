@@ -17,7 +17,7 @@ from model.rpn.bbox_transform import bbox_transform_inv, clip_boxes
 import numpy as np
 import random
 import time
-import pdb
+from pudb.remote import set_trace
 
 class roibatchLoader(data.Dataset):
   def __init__(self, roidb, ratio_list, ratio_index, batch_size, num_classes, training=True, normalize=None):
@@ -201,7 +201,8 @@ class roibatchLoader(data.Dataset):
             # permute trim_data to adapt to downstream processing
         padding_data = padding_data.permute(2, 0, 1).contiguous()
         im_info = im_info.view(3)
-
+        if not (padding_data.size(2) == 600 or padding_data.size(1) == 600):
+            print('WRONG!')
         return padding_data, im_info, gt_boxes_padding, num_boxes
     else:
         data = data.permute(0, 3, 1, 2).contiguous().view(3, data_height, data_width)

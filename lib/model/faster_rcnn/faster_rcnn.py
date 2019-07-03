@@ -8,6 +8,7 @@ from torch.autograd import Variable
 import numpy as np
 from model.utils.config import cfg
 from model.rpn.rpn import _RPN
+from model.utils.focal_loss import FocalLoss
 
 from model.roi_layers import ROIAlign, ROIPool
 
@@ -39,6 +40,8 @@ class _fasterRCNN(nn.Module):
 
         self.RCNN_roi_pool = ROIPool((cfg.POOLING_SIZE, cfg.POOLING_SIZE), 1.0/16.0)
         self.RCNN_roi_align = ROIAlign((cfg.POOLING_SIZE, cfg.POOLING_SIZE), 1.0/16.0, 0)
+
+        self.focal_loss = FocalLoss(num_classes=self.n_classes)
 
     def forward(self, im_data, im_info, gt_boxes, num_boxes):
         batch_size = im_data.size(0)
@@ -99,6 +102,8 @@ class _fasterRCNN(nn.Module):
         if self.training:
             # classification loss
             RCNN_loss_cls = F.cross_entropy(cls_score, rois_label)
+            # rois_label = rois_label[:, 1:]  # exclude background
+            # RCNN_loss_cls = self.focal_loss(cls_score, rois_label)
 
             # bounding box regression L1 loss
             RCNN_loss_bbox = _smooth_l1_loss(bbox_pred, rois_target, rois_inside_ws, rois_outside_ws)
